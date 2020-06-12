@@ -17,6 +17,8 @@ char user[15];//whether user is student or librarian
 int user_no=0;//total students
 int book_no=0;//total books
 
+//Structure Definitions---------------------------------------------------------------------------------
+
 //date structure
 typedef struct
 {
@@ -30,6 +32,7 @@ typedef struct
     char password[PASSWD_LEN];
 }Check;
 
+//Book  structure
 typedef struct
 {
     int id;
@@ -39,8 +42,9 @@ typedef struct
     Date date;
 }book;
 
-book b[MAX_BOOK];//initialize books
+book b[MAX_BOOK];
 
+//User structure
 typedef struct
 {
     int id;
@@ -54,6 +58,8 @@ typedef struct
 
 User librarian;
 User student[MAX_STUDENT];
+
+//----------------------------------------------------------------------------------------------------------
 
 int main()
 {
@@ -72,8 +78,6 @@ void first_page()
     getch();
     enter_page();
 }
-
-
 
 //display text as heading
 void head_text(char text[])
@@ -112,6 +116,263 @@ void enter_page()
         enter_page();
     }
 }
+
+//login as student or librarian
+void login()
+{
+    system("cls");
+    head_text("LOGIN PAGE");
+
+    int choice,loop,trys=0,flag=0;
+    char username[USRNAME_LEN];
+    char password[PASSWD_LEN];
+
+    printf("Enter as \n\n1.STUDENT\n2.LIBRARIAN\n\nEnter choice => ");
+    scanf("%d",&choice);
+    read_info();
+
+    if((choice!=1)&&(choice!=2)){
+        printf("\n\nINCORRECT CHOICE!!!\nTRY AGAIN!\nPress any key...");
+        fflush(stdin);
+        getch();
+        login();
+    }
+
+    else{
+        do{
+            strcpy(user,"student");
+            printf("\nUSERNAME :  ");
+            scanf("%s",&username);
+            printf("PASSWORD :  ");
+            scanf("%s",&password);
+            //student login
+            if(choice==1){
+                for(loop=0;loop<user_no;loop++){
+                    if((!strcmp(student[loop].check.username,username))&&(!strcmp(student[loop].check.password,password))){
+                        stud_no=loop;
+                        flag=1;
+                        break;
+                    }
+                }
+                if(flag==1){
+                   student_menu();
+                }
+            }
+            //librarian login
+            else if(choice==2){
+                strcpy(user,"librarian");
+                if((!strcmp(librarian.check.username,username))&&(!strcmp(librarian.check.password,password))){
+                    librarian_menu();
+                    break;
+                }
+            }
+
+            if(flag==0){
+                printf("\t\t\t\tLogin Failed Enter Again Username & Password\n\n");
+                trys++;
+            }
+        }while(trys<=3);
+
+        if(trys>3){
+            printf("\n\nLogin Failed. Too many trys\n");
+            printf("\nSorry,Unknown User.");
+            printf("\nPress any key....");
+            getch();
+            first_page();
+        }
+    }
+}
+
+//create new student user
+void sign_up()
+{
+    system("cls");
+    head_text("SIGN UP PAGE");
+    read_info();
+
+    int choice,loop,flag=1,id;
+    char username[USRNAME_LEN];
+    char password[PASSWD_LEN];
+
+    enter_rollno:
+
+    printf("ENTER ROLL NO:  ");
+    scanf("%d",&id);
+    //check if id is unique
+    for(loop=0;loop<user_no;loop++){
+        if(id==student[loop].id){
+            printf("\n\nROLL NO ALREADY IN USE. Press any key to try again...\n\n");
+            fflush(stdin);
+            getch();
+            goto enter_rollno;
+        }
+    }
+
+    enter_username:
+
+    printf("\nUSERNAME: ");
+    scanf("%s",&username);
+    //check if username is unique
+    for(loop=0;loop<user_no;loop++){
+        if(!strcmp(username,student[loop].check.username)){
+            printf("\n\nUSERNAME ALREADY IN USE. Press any key to try again...\n\n");
+            fflush(stdin);
+            getch();
+            goto enter_username;
+        }
+    }
+
+    user_no++;
+
+    student[user_no].id=id;
+    strcpy(student[user_no].check.username,username);
+
+    printf("\nPASSWORD: ");
+    scanf("%s",&student[user_no].check.password);
+
+    printf("\nName: ");
+    scanf("%s",&student[user_no].name);
+    printf("\nDepartment: ");
+    scanf("%s",&student[user_no].dept);
+
+    printf("\nDate Of Birth (dd/mm/yy format): ");
+    scanf("%d/%d/%d", &student[user_no].dob.dd, &student[user_no].dob.mm, &student[user_no].dob.yy);
+
+    student[user_no].borrowed_book_no=0;
+    strcpy(student[user_no].borrowed_books[0],"None\0");
+    //write to file
+    FILE *fp;
+    fp=fopen("input.txt","a");
+
+    fprintf(fp,"\n%d %s %s %s %s %d %d/%d/%d ", student[user_no].id, student[user_no].check.username, student[user_no].check.password, student[user_no].name, student[user_no].dept, student[user_no].borrowed_book_no, student[user_no].dob.dd, student[user_no].dob.mm, student[user_no].dob.yy);
+    fflush(stdin);
+    fprintf(fp,"%s ",student[user_no].borrowed_books[0]);
+    fflush(stdin);
+
+    fclose(fp);
+    stud_no=user_no;
+    strcpy(user,"student");
+    student_menu();
+}
+
+//return as specified
+void return_to()
+{
+    int choice;
+    fflush(stdin);
+    printf("\n\nEnter 1 to go to menu or 0 to exit.....");
+    scanf("%d",&choice);
+    if(choice==1){
+        if(!strcmp(user,"student"))
+            student_menu();
+        else
+            librarian_menu();
+    }
+    if(choice==0)
+        exit(1);
+    else{
+        printf("\n\nINCORRECT CHOICE!!!\nTRY AGAIN!\nPress any key...");
+        return_to();
+    }
+}
+
+//----------------------------------------------------------------------------------------------------------
+
+//functions to add or update data in file
+
+//read file with user info
+void read_info()
+{
+    int loop,book;
+    strcpy((librarian.check.username),DEFAULT_USRNAME);
+    strcpy((librarian.check.password),DEFAULT_PASSWRD);
+
+    FILE *fp;
+    fp=fopen("input.txt","r");
+
+    if(fp==NULL){
+        return;
+    }
+
+    for(loop=0;!(feof(fp));loop++)
+    {
+        fscanf(fp,"\n%d %s %s %s %s %d %d/%d/%d ", &student[loop].id, student[loop].check.username, student[loop].check.password, student[loop].name, student[loop].dept, &student[loop].borrowed_book_no, &student[loop].dob.dd, &student[loop].dob.mm, &student[loop].dob.yy);
+
+        if(student[loop].borrowed_book_no==0){
+            fscanf(fp,"%s ",student[loop].borrowed_books[0]);
+        }
+        else{
+            for(book=0;book<student[loop].borrowed_book_no;book++){
+                fscanf(fp,"%s ",student[loop].borrowed_books[book]);
+            }
+        }
+    }
+    user_no=loop;
+    fclose(fp);
+}
+
+//read file with book info
+void read_book()
+{
+    int loop;
+    FILE *fp;
+    fp=fopen("books.txt","r");
+
+    if(fp==NULL){
+        fclose(fp);
+        return;
+    }
+
+    for(loop=0;!(feof(fp));loop++)
+        fscanf(fp,"\n%d %s %s %s ", &b[loop].id, b[loop].name, b[loop].author, b[loop].status);
+    book_no=loop;
+
+    fclose(fp);
+}
+
+//update changes made in user info to file
+void update_info()
+{
+    int loop,book;
+    FILE *fp;
+
+    fp=fopen("input.txt","w");
+
+    for(loop=0;loop<user_no;loop++){
+        fprintf(fp,"\n%d %s %s %s %s %d %d/%d/%d ", student[loop].id, student[loop].check.username, student[loop].check.password, student[loop].name, student[loop].dept, student[loop].borrowed_book_no, student[loop].dob.dd, student[loop].dob.mm, student[loop].dob.yy);
+        fflush(stdin);
+
+        if(student[loop].borrowed_book_no==0){
+            fprintf(fp,"%s ","NONE");
+            fflush(stdin);
+        }
+        else{
+            for(book=0;book<student[loop].borrowed_book_no;book++){
+                fprintf(fp,"%s ",student[loop].borrowed_books[book]);
+                fflush(stdin);
+            }
+        }
+    }
+    fclose(fp);
+}
+
+//update changes made in book info to file
+void update_book()
+{
+    FILE *fp;
+    fp=fopen("books.txt","w");
+
+    int loop=0;
+
+    for(loop=0;loop<book_no;loop++)
+    {
+        fprintf(fp,"\n%d %s %s %s ", b[loop].id, b[loop].name, b[loop].author, b[loop].status);
+        fflush(stdin);
+    }
+    fclose(fp);
+}
+
+//----------------------------------------------------------------------------------------------------------
 
 void student_menu()
 {
@@ -234,252 +495,9 @@ void librarian_menu()
     }
 }
 
-//read file with user info
-void read_info()
-{
-    int loop,book;
-    strcpy((librarian.check.username),DEFAULT_USRNAME);
-    strcpy((librarian.check.password),DEFAULT_PASSWRD);
+//----------------------------------------------------------------------------------------------------------
 
-    FILE *fp;
-    fp=fopen("input.txt","r");
-
-    if(fp==NULL){
-        return;
-    }
-
-    for(loop=0;!(feof(fp));loop++)
-    {
-        fscanf(fp,"\n%d %s %s %s %s %d %d/%d/%d ", &student[loop].id, student[loop].check.username, student[loop].check.password, student[loop].name, student[loop].dept, &student[loop].borrowed_book_no, &student[loop].dob.dd, &student[loop].dob.mm, &student[loop].dob.yy);
-
-        if(student[loop].borrowed_book_no==0){
-            fscanf(fp,"%s ",student[loop].borrowed_books[0]);
-        }
-        else{
-            for(book=0;book<student[loop].borrowed_book_no;book++){
-                fscanf(fp,"%s ",student[loop].borrowed_books[book]);
-            }
-        }
-    }
-    user_no=loop;
-    fclose(fp);
-}
-
-//read books from file
-void read_book()
-{
-    int loop;
-    FILE *fp;
-    fp=fopen("books.txt","r");
-
-    if(fp==NULL){
-        fclose(fp);
-        return;
-    }
-
-    for(loop=0;!(feof(fp));loop++)
-        fscanf(fp,"\n%d %s %s %s ", &b[loop].id, b[loop].name, b[loop].author, b[loop].status);
-    book_no=loop;
-
-    fclose(fp);
-}
-
-//update changes made in user info to file
-void update_info()
-{
-    int loop,book;
-    FILE *fp;
-
-    fp=fopen("input.txt","w");
-
-    for(loop=0;loop<user_no;loop++){
-        fprintf(fp,"\n%d %s %s %s %s %d %d/%d/%d ", student[loop].id, student[loop].check.username, student[loop].check.password, student[loop].name, student[loop].dept, student[loop].borrowed_book_no, student[loop].dob.dd, student[loop].dob.mm, student[loop].dob.yy);
-        fflush(stdin);
-
-        if(student[loop].borrowed_book_no==0){
-            fprintf(fp,"%s ","NONE");
-            fflush(stdin);
-        }
-        else{
-            for(book=0;book<student[loop].borrowed_book_no;book++){
-                fprintf(fp,"%s ",student[loop].borrowed_books[book]);
-                fflush(stdin);
-            }
-        }
-    }
-    fclose(fp);
-}
-
-//update changes made to book in file
-void update_book()
-{
-    FILE *fp;
-    fp=fopen("books.txt","w");
-
-    int loop=0;
-
-    for(loop=0;loop<book_no;loop++)
-    {
-        fprintf(fp,"\n%d %s %s %s ", b[loop].id, b[loop].name, b[loop].author, b[loop].status);
-        fflush(stdin);
-    }
-    fclose(fp);
-}
-
-//create new student user
-void sign_up()
-{
-    system("cls");
-    head_text("SIGN UP PAGE");
-    read_info();
-
-    int choice,loop,flag=1,id;
-    char username[USRNAME_LEN];
-    char password[PASSWD_LEN];
-
-    printf("ENTER ROLL NO:  ");
-    scanf("%d",&id);
-    //check if id is unique
-    for(loop=0;loop<user_no;loop++){
-        if(id==student[loop].id){
-            printf("\n\nROLL NO ALREADY IN USE. Press any key to try again...\n\n");
-            fflush(stdin);
-            getch();
-            sign_up();
-        }
-    }
-
-    printf("\nUSERNAME: ");
-    scanf("%s",&username);
-    //check if username is unique
-    for(loop=0;loop<user_no;loop++){
-        if(!strcmp(username,student[loop].check.username)){
-            printf("\n\nUSERNAME ALREADY IN USE. Press any key to try again...\n\n");
-            fflush(stdin);
-            getch();
-            sign_up();
-        }
-    }
-
-    user_no++;
-
-    student[user_no].id=id;
-    strcpy(student[user_no].check.username,username);
-
-    printf("\nPASSWORD: ");
-    scanf("%s",&student[user_no].check.password);
-
-    printf("\nName: ");
-    scanf("%s",&student[user_no].name);
-    printf("\nDepartment: ");
-    scanf("%s",&student[user_no].dept);
-
-    printf("\nDate Of Birth (dd/mm/yy format): ");
-    scanf("%d/%d/%d", &student[user_no].dob.dd, &student[user_no].dob.mm, &student[user_no].dob.yy);
-
-    student[user_no].borrowed_book_no=0;
-    strcpy(student[user_no].borrowed_books[0],"None\0");
-    //write to file
-    FILE *fp;
-    fp=fopen("input.txt","a");
-
-    fprintf(fp,"\n%d %s %s %s %s %d %d/%d/%d ", student[user_no].id, student[user_no].check.username, student[user_no].check.password, student[user_no].name, student[user_no].dept, student[user_no].borrowed_book_no, student[user_no].dob.dd, student[user_no].dob.mm, student[user_no].dob.yy);
-    fflush(stdin);
-    fprintf(fp,"%s ",student[user_no].borrowed_books[0]);
-    fflush(stdin);
-
-    fclose(fp);
-    stud_no=user_no;
-    strcpy(user,"student");
-    student_menu();
-}
-
-//login as student or librarian
-void login()
-{
-    system("cls");
-    head_text("LOGIN PAGE");
-
-    int choice,loop,trys=0,flag=0;
-    char username[USRNAME_LEN];
-    char password[PASSWD_LEN];
-
-    printf("Enter as \n\n1.STUDENT\n2.LIBRARIAN\n\nEnter choice => ");
-    scanf("%d",&choice);
-    read_info();
-
-    if((choice!=1)&&(choice!=2)){
-        printf("\n\nINCORRECT CHOICE!!!\nTRY AGAIN!\nPress any key...");
-        fflush(stdin);
-        getch();
-        login();
-    }
-
-    else{
-        do{
-            strcpy(user,"student");
-            printf("\nUSERNAME :  ");
-            scanf("%s",&username);
-            printf("PASSWORD :  ");
-            scanf("%s",&password);
-            //student login
-            if(choice==1){
-                for(loop=0;loop<user_no;loop++){
-                    if((!strcmp(student[loop].check.username,username))&&(!strcmp(student[loop].check.password,password))){
-                        stud_no=loop;
-                        flag=1;
-                        break;
-                    }
-                }
-                if(flag==1){
-                   student_menu();
-                }
-            }
-            //librarian login
-            else if(choice==2){
-                strcpy(user,"librarian");
-                if((!strcmp(librarian.check.username,username))&&(!strcmp(librarian.check.password,password))){
-                    librarian_menu();
-                    break;
-                }
-            }
-
-            if(flag==0){
-                printf("\t\t\t\tLogin Failed Enter Again Username & Password\n\n");
-                trys++;
-            }
-        }while(trys<=3);
-
-        if(trys>3){
-            printf("\n\nLogin Failed. Too many trys\n");
-            printf("\nSorry,Unknown User.");
-            printf("\nPress any key....");
-            getch();
-            first_page();
-        }
-    }
-}
-
-//return as specified
-void return_to()
-{
-    int choice;
-    fflush(stdin);
-    printf("\n\nEnter 1 to go to menu or 0 to exit.....");
-    scanf("%d",&choice);
-    if(choice==1){
-        if(!strcmp(user,"student"))
-            student_menu();
-        else
-            librarian_menu();
-    }
-    if(choice==0)
-        exit(1);
-    else{
-        printf("\n\nINCORRECT CHOICE!!!\nTRY AGAIN!\nPress any key...");
-        return_to();
-    }
-}
+//librarian specific functions
 
 //view students
 void view_students()
@@ -502,6 +520,120 @@ void view_students()
         printf("\n\t\t\tNo Record\n\n");
     return_to();
 }
+
+//add book to record
+void add_book()
+{
+    system("cls");
+    read_book();
+    head_text("ADD BOOKS PAGE");
+    int loop,id,count=0,flag=1;
+
+    FILE *fp;
+    fp=fopen("books.txt","a");
+
+    printf("\nENTER YOUR DETAILS BELOW:\n\n");
+    printf("\nBook id: ");
+    scanf("%d",&id);
+    for(loop=0;loop<book_no;loop++){
+        if(id==b[loop].id){
+            printf("\n\nBOOK ID not available. Try again. \n\n\nPress any key...");
+            getch();
+            flag=0;
+            break;
+        }
+    }
+    if(flag==0)
+        add_book();
+
+    book_no++;
+    b[book_no].id=id;
+
+    printf("Book name: ");
+    scanf("%s",&b[book_no].name);
+
+    printf("Author name: ");
+    scanf("%s",&b[book_no].author);
+
+    strcpy(b[book_no].status,"available");
+
+    fprintf(fp,"%d %s %s %s\n", b[book_no].id, b[book_no].name, b[book_no].author, b[book_no].status);
+
+    fclose(fp);
+    printf("\n\nBOOK SUCCESSFULLY ADDED\n");
+    return_to();
+
+}
+
+//delete book from record
+void delete_book()
+{
+    system("cls");
+    head_text("DELETE BOOK PAGE");
+    read_book();
+
+    int loop,index,count=0;
+    char name[NAME_LEN];
+
+    printf("\n\nEnter book name to delete:  ");
+    scanf("%s",&name);
+    for(loop=0;loop<book_no;loop++){
+        if(!(strcmp(name,b[loop].name))){
+            count++;
+            for(index=loop;index<book_no;index++){
+                b[index].id=b[index+1].id;
+                strcpy(b[index].author,b[index+1].author);
+                strcpy(b[index].name,b[index+1].name);
+                strcpy(b[index].status,b[index+1].status);
+
+            }
+            book_no--;
+            --loop;
+        }
+    }
+    if(count==0)
+        printf("Book not available");
+    else{
+        printf("\n        Books available after deletion       ");
+        printf("\n---------------------------------------------------------\n");
+        printf("BOOK ID\t\tAUTHOR\t\t\tNAME\t\t\t\tSTATUS");
+        for(loop=0;loop<book_no;loop++){
+            printf("\n%d",b[loop].id);
+            printf("\t\t%s",b[loop].author);
+            printf("\t\t\t%s",b[loop].name);
+            printf("\t\t\t\t%s",b[loop].status);
+        }
+        printf("\n\n\nTotal number of books available after deletion: %d",book_no);
+        printf("\n\n\n\n");
+    }
+    update_book();
+    return_to();
+}
+
+void view_preference()
+{
+    system("cls");
+    head_text("VIEW PREFERENCES");
+    FILE *fp;
+    fp=fopen("prefer.txt","r");
+    char author[AUTHOR_LEN],name[NAME_LEN];
+    if(fp==NULL){
+        printf("\t\tNo record of preferences!!\n\n");
+    }
+    else{
+        printf("\t\t\tBOOK NAMES\t\tAUTHOR NAMES\n\n");
+        while((fscanf(fp,"%s %s\n",name,author))!=EOF){
+            printf("\t\t\t%s\t  -  \t%s\n",name,author);
+        }
+    }
+    fclose(fp);
+    return_to;
+}
+
+
+//----------------------------------------------------------------------------------------------------------
+
+//functions common to both student and librarian
 
 //list all books in the record
 void view_books()
@@ -629,94 +761,76 @@ void edit_info()
     return_to();
 }
 
-//add book to record
-void add_book()
+void search_book()
 {
     system("cls");
+    head_text("SEARCH BOOK");
     read_book();
-    head_text("ADD BOOKS PAGE");
-    int loop,id,count=0,flag=1;
 
-    FILE *fp;
-    fp=fopen("books.txt","a");
+    int choice,loop,flag=0,avail_book=0;
+    char author[AUTHOR_LEN],name[NAME_LEN];
 
-    printf("\nENTER YOUR DETAILS BELOW:\n\n");
-    printf("\nBook id: ");
-    scanf("%d",&id);
-    for(loop=0;loop<book_no;loop++){
-        if(id==b[loop].id){
-            printf("\n\nBOOK ID not available. Try again. \n\n\nPress any key...");
-            getch();
-            flag=0;
-            break;
+    printf("Search by : \n\n");
+    printf("1.Title\n2.Author\n\n\nEnter choice => ");
+    scanf("%d",&choice);
+
+    if(choice==1){
+        printf("\n\nEnter the Title of the book :  ");
+        scanf("%s",&name);
+        for(loop=0;loop<book_no;loop++){
+            if(strcmp(name,b[loop].name)==0){
+                avail_book++;
+                if(avail_book==1){
+                  printf("\nBOOK IS AVAILABLE\n\n\t\t\tBOOK DETAILS\n\n");
+                }
+                printf("BOOK NO %d :  \n",avail_book);
+                printf("BOOK ID :\t%d\n",b[loop].id);
+                printf("BOOK NAME :\t%s\n",b[loop].name);
+                printf("AUTHOR NAME :\t%s\n",b[loop].author);
+                printf("BOOK STATUS :\t%s\n",b[loop].status);
+                printf("---------------------------------------------------\n\n");
+                flag=1;
+                continue;
+            }
         }
+    }
+
+    else if(choice==2){
+        printf("\n\nEnter Author name : ");
+        scanf("%s",&author);
+        for(loop=0;loop<book_no;loop++){
+            if(strcmp(author,b[loop].author)==0){
+                avail_book++;
+                if(avail_book==1){
+                   printf("\nBOOK IS AVAILABLE\n\n\t\t\tBOOK DETAILS\n\n");
+                }
+                printf("BOOK NO %d :  \n",avail_book);
+                printf("BOOK ID :\t%d\n",b[loop].id);
+                printf("BOOK NAME :\t%s\n",b[loop].name);
+                printf("AUTHOR NAME :\t%s\n",b[loop].author);
+                printf("BOOK STATUS :\t%s\n",b[loop].status);
+                printf("PUBLISHED DATE :\t%d/%d/%d\n",b[loop].date.dd,b[loop].date.mm,b[loop].date.yy);
+                printf("---------------------------------------------------\n\n");
+                flag=1;
+                continue;
+            }
+        }
+    }
+    else{
+        printf("\n\n\nWRONG CHOICE!!\nTRY AGAIN.\n...");
+        fflush(stdin);
+        getch();
+        search_book();
     }
     if(flag==0)
-        add_book();
+        printf("\n\n\nWE DON'T HAVE THE BOOK YOU REQUIRED\n");
 
-    book_no++;
-    b[book_no].id=id;
-
-    printf("Book name: ");
-    scanf("%s",&b[book_no].name);
-
-    printf("Author name: ");
-    scanf("%s",&b[book_no].author);
-
-    strcpy(b[book_no].status,"available");
-
-    fprintf(fp,"%d %s %s %s\n", b[book_no].id, b[book_no].name, b[book_no].author, b[book_no].status);
-
-    fclose(fp);
-    printf("\n\nBOOK SUCCESSFULLY ADDED\n");
-    return_to();
-
-}
-
-//delete book from record
-void delete_book()
-{
-    system("cls");
-    head_text("DELETE BOOK PAGE");
-    read_book();
-
-    int loop,index,count=0;
-    char name[NAME_LEN];
-
-    printf("\n\nEnter book name to delete:  ");
-    scanf("%s",&name);
-    for(loop=0;loop<book_no;loop++){
-        if(!(strcmp(name,b[loop].name))){
-            count++;
-            for(index=loop;index<book_no;index++){
-                b[index].id=b[index+1].id;
-                strcpy(b[index].author,b[index+1].author);
-                strcpy(b[index].name,b[index+1].name);
-                strcpy(b[index].status,b[index+1].status);
-
-            }
-            book_no--;
-            --loop;
-        }
-    }
-    if(count==0)
-        printf("Book not available");
-    else{
-        printf("\n        Books available after deletion       ");
-        printf("\n---------------------------------------------------------\n");
-        printf("BOOK ID\t\tAUTHOR\t\t\tNAME\t\t\t\tSTATUS");
-        for(loop=0;loop<book_no;loop++){
-            printf("\n%d",b[loop].id);
-            printf("\t\t%s",b[loop].author);
-            printf("\t\t\t%s",b[loop].name);
-            printf("\t\t\t\t%s",b[loop].status);
-        }
-        printf("\n\n\nTotal number of books available after deletion: %d",book_no);
-        printf("\n\n\n\n");
-    }
-    update_book();
     return_to();
 }
+
+//----------------------------------------------------------------------------------------------------------
+
+//student specific functions
 
 //return book
 void return_book()
@@ -832,72 +946,6 @@ void borrow_book()
     return_to();
 
 }
-void search_book()
-{
-    system("cls");
-    head_text("SEARCH BOOK");
-    read_book();
-
-    int choice,loop,flag=0,avail_book=0;
-    char author[AUTHOR_LEN],name[NAME_LEN];
-
-    printf("Search by : \n\n");
-    printf("1.Title\n2.Author\n\n\nEnter choice => ");
-    scanf("%d",&choice);
-
-    if(choice==1){
-        printf("\n\nEnter the Title of the book :  ");
-        scanf("%s",&name);
-        for(loop=0;loop<book_no;loop++){
-            if(strcmp(name,b[loop].name)==0){
-                avail_book++;
-                if(avail_book==1){
-                  printf("\nBOOK IS AVAILABLE\n\n\t\t\tBOOK DETAILS\n\n");
-                }
-                printf("BOOK NO %d :  \n",avail_book);
-                printf("BOOK ID :\t%d\n",b[loop].id);
-                printf("BOOK NAME :\t%s\n",b[loop].name);
-                printf("AUTHOR NAME :\t%s\n",b[loop].author);
-                printf("BOOK STATUS :\t%s\n",b[loop].status);
-                printf("---------------------------------------------------\n\n");
-                flag=1;
-                continue;
-            }
-        }
-    }
-
-    else if(choice==2){
-        printf("\n\nEnter Author name : ");
-        scanf("%s",&author);
-        for(loop=0;loop<book_no;loop++){
-            if(strcmp(author,b[loop].author)==0){
-                avail_book++;
-                if(avail_book==1){
-                   printf("\nBOOK IS AVAILABLE\n\n\t\t\tBOOK DETAILS\n\n");
-                }
-                printf("BOOK NO %d :  \n",avail_book);
-                printf("BOOK ID :\t%d\n",b[loop].id);
-                printf("BOOK NAME :\t%s\n",b[loop].name);
-                printf("AUTHOR NAME :\t%s\n",b[loop].author);
-                printf("BOOK STATUS :\t%s\n",b[loop].status);
-                printf("PUBLISHED DATE :\t%d/%d/%d\n",b[loop].date.dd,b[loop].date.mm,b[loop].date.yy);
-                printf("---------------------------------------------------\n\n");
-                flag=1;
-                continue;
-            }
-        }
-    }
-    else{
-        printf("\n\n\nWRONG CHOICE!!\nTRY AGAIN.\n...");
-        fflush(stdin);
-        getch();
-        search_book();
-    }
-    if(flag==0)
-        printf("\n\n\nWE DON'T HAVE THE BOOK YOU REQUIRED\n");
-
-    return_to();
-}
 
 void add_preference()
 {
@@ -928,27 +976,5 @@ void add_preference()
         printf("\n\t\tYOUR PREFERENCES ARE NOTED!! WE WILL TRY TO ADD THE BOOK AS SOON AS POSSIBLE!!\n\n");
     }
     return_to();
-}
-
-
-
-void view_preference()
-{
-    system("cls");
-    head_text("VIEW PREFERENCES");
-    FILE *fp;
-    fp=fopen("prefer.txt","r");
-    char author[AUTHOR_LEN],name[NAME_LEN];
-    if(fp==NULL){
-        printf("\t\tNo record of preferences!!\n\n");
-    }
-    else{
-        printf("\t\t\tBOOK NAMES\t\tAUTHOR NAMES\n\n");
-        while((fscanf(fp,"%s %s\n",name,author))!=EOF){
-            printf("\t\t\t%s\t  -  \t%s\n",name,author);
-        }
-    }
-    fclose(fp);
-    return_to;
 }
 
